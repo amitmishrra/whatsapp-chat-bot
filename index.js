@@ -1,70 +1,44 @@
-const { Client, LocalAuth, Buttons, Location } = require('whatsapp-web.js');
+const { Configuration, OpenAIApi } = require("openai");
 const qrcode = require('qrcode-terminal');
-const client = new Client({
-    authStrategy : new LocalAuth(),
+const { Client } = require('whatsapp-web.js');
+const configuration = new Configuration({
+  apiKey: "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",
 });
-let button = new Buttons('Please select one of the below options.', [{ body: 'Nearest Store' }, { body: 'Timing' }, { body: 'Product Details' }], 'XYZ Stores');
+const openai = new OpenAIApi(configuration);
+const answer = '';
 
-client.on('qr', (qr) => {
-    qrcode.generate(qr, { small: true });
+const client = new Client();
+
+client.on('qr', qr => {
+    qrcode.generate(qr, {small: true});
 });
 
 client.on('ready', () => {
     console.log('Client is ready!');
 });
 
-function getDistance(lat1, lon1, lat2, lon2) {
-    var R = 6371; // km (change this constant to get miles)
-    var dLat = (lat2 - lat1) * Math.PI / 180;
-    var dLon = (lon2 - lon1) * Math.PI / 180;
-    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    var d = R * c;
-    return Math.round(d * 1000);
-}
+client.on('message', msg => {
 
-const coordinates = [
-    {
-        "lat": 24.5529990,
-        "lng": 80.8218023
-    },
-    {
-        "lat": 24.5554423,
-        "lng": 80.8232111
-    },
-    {
-        "lat": 24.5657560,
-        "lng": 80.8163145
+    if(msg.body.toLocaleLowerCase == 'hello' || msg.body.toLocaleLowerCase == 'hi' || msg.body.toLocaleLowerCase == 'hey') {
+        msg.reply('Please send your question!');
     }
-]
-
-client.on('message', message => {
-    if (message.body === 'Hello') {
-        client.sendMessage(message.from, button);
-    }
-
-    else if (message.body == 'Nearest Store') {
-        client.sendMessage(message.from, 'Please share your location')
-    }
-
-    else if (message.type === 'location') {
-        const distance = []
-        console.log(message.location.latitude, message.location.longitude)
-        coordinates.forEach(element => {
-            let dist = getDistance(message.location.latitude, message.location.longitude, element.lat, element.lng)
-            console.log(dist)
-            distance.push(dist)
-        });
-        let minimumDistance = Math.min(...distance)
-        console.log(distance)
-        let nearest = coordinates[distance.indexOf(minimumDistance)]
-        client.sendMessage(message.from, `https://www.google.com/maps/search/?api=1&query=${nearest.lat},${nearest.lng}`);
-    }
-
-    else if (message.body == 'Timing') {
-        client.sendMessage(message.from, 'Timing: 10:00 AM to 10:00 PM');
+    else{
+        openai.createCompletion({
+            model: "text-davinci-003",
+            prompt: `I am a highly intelligent question answering bot. If you ask me a question that is rooted in truth, I will give you the answer. If you ask me a question that is nonsense, trickery, or has no clear answer, I will respond with \"Unknown\".\n\nQ: What is human life expectancy in the United States?\nA: Human life expectancy in the United States is 78 years.\n\nQ: Who was president of the United States in 1955?\nA: Dwight D. Eisenhower was president of the United States in 1955.\n\nQ: Which party did he belong to?\nA: He belonged to the Republican Party.\n\nQ: What is the square root of banana?\nA: Unknown\n\nQ: How does a telescope work?\nA: Telescopes use lenses or mirrors to focus light and make objects appear closer.\n\nQ: Where were the 1992 Olympics held?\nA: The 1992 Olympics were held in Barcelona, Spain.\n\nQ: How many squigs are in a bonk?\nA: Unknown\n\nQ: ${msg.body}\nA:`,
+            temperature: 0,
+            max_tokens: 100,
+            top_p: 1,
+            frequency_penalty: 0.0,
+            presence_penalty: 0.0,
+            stop: ["\n"],
+          }).then((response) => {
+              if(response.data.choices[0].text == 'Unknown'){
+                msg.reply('Sorry! I don\'t know the answer to that question!');
+              }else{
+                msg.reply(response.data.choices[0].text);
+              }
+          });
     }
 });
 
