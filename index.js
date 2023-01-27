@@ -2,7 +2,7 @@ const { Configuration, OpenAIApi } = require("openai");
 const qrcode = require('qrcode-terminal');
 const { Client } = require('whatsapp-web.js');
 const configuration = new Configuration({
-  apiKey: "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",
+  apiKey: "YOUR_API_KEY",
 });
 const openai = new OpenAIApi(configuration);
 const answer = '';
